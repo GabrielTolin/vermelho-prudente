@@ -20,7 +20,8 @@ export default function CriarFuncionarioModal({ onFechar, onCriado }) {
     setLoading(true)
 
     try {
-      const res = await fetch('http://localhost:3001/api/funcionarios', {
+      const BASE_URL = import.meta.env.DEV ? 'http://localhost:3001/api' : 'https://vermelho-prudente.onrender.com/api'
+      const res = await fetch(`${BASE_URL}/funcionarios`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),

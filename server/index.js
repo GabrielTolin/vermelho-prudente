@@ -11,8 +11,19 @@ const app = express()
 const PORT = process.env.PORT || 3001
 
 // CORS: permitir frontend local + produção Vercel
+const origensPermitidas = [
+  'http://localhost:5173',
+  'https://vermelho-prudente.vercel.app',
+]
+
 app.use(cors({
-  origin: true,
+  origin: (origin, callback) => {
+    if (!origin || origensPermitidas.includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error('CORS: origem não permitida'))
+    }
+  },
   credentials: true,
 }))
 
