@@ -79,10 +79,10 @@ export default function Dashboard() {
         }}
       />
 
-      <div className="relative z-10 w-full max-w-lg px-6 py-10">
+      <div className="relative z-10 w-full max-w-lg px-6 py-10 flex flex-col gap-6">
 
         {/* Header */}
-        <div className="flex items-start justify-between mb-8">
+        <div className="flex items-start justify-between mb-0">
           <div>
             <h1 className="text-white font-bold text-xl">Vermelho Prudente</h1>
             <p className="text-gray-500 text-sm mt-0.5">Painel admin · {hoje}</p>
@@ -96,7 +96,7 @@ export default function Dashboard() {
         </div>
 
         {/* Card resumo */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl px-5 py-4 mb-8 flex items-center justify-between">
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl px-5 py-4 mb-0 flex items-center justify-between">
           <div>
             <p className="text-gray-500 text-sm">Total em obra agora</p>
             <p className="text-white text-3xl font-bold mt-1">
@@ -110,7 +110,7 @@ export default function Dashboard() {
         </div>
 
         {/* Botões ação */}
-        <div className="grid grid-cols-2 gap-3 mb-8">
+        <div className="grid grid-cols-2 gap-3 mb-0">
           <button
             onClick={() => setModalObra(true)}
             className="flex items-center justify-center gap-2 bg-[#111] border border-[#2a2a2a] hover:border-[#cc0000] text-white rounded-2xl py-3.5 text-sm font-semibold transition"

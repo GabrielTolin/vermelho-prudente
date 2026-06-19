@@ -155,10 +155,10 @@ export default function Ponto() {
         }}
       />
 
-      <div className="relative z-10 w-full max-w-lg mx-auto px-6 py-10">
+      <div className="relative z-10 w-full max-w-lg mx-auto px-6 py-10 flex flex-col gap-6">
 
         {/* Header */}
-        <div className="flex items-start justify-between mb-8">
+        <div className="flex items-start justify-between mb-0">
           <div>
             <h1 className="text-white font-bold text-lg">Olá, {funcionario?.nome?.split(' ')[0] || 'Funcionário'} 👋</h1>
             <p className="text-gray-500 text-sm mt-0.5 capitalize">{hoje}</p>
@@ -167,7 +167,7 @@ export default function Ponto() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-4 mb-8 border-b border-[#1e1e1e]">
+        <div className="flex gap-4 mb-0 border-b border-[#1e1e1e]">
           <button
             onClick={() => setTab('ponto')}
             className={`pb-3 text-sm font-semibold transition border-b-2 -mb-px ${
@@ -218,7 +218,7 @@ export default function Ponto() {
         {tab === 'ponto' && <>
 
         {/* Estado GPS */}
-        <div className={`rounded-xl px-4 py-3 mb-8 flex items-center gap-3 ${gps ? 'bg-green-900/20 border border-green-800/30' : 'bg-[#1a1a1a] border border-[#2a2a2a]'}`}>
+        <div className={`rounded-xl px-4 py-3 mb-0 flex items-center gap-3 ${gps ? 'bg-green-900/20 border border-green-800/30' : 'bg-[#1a1a1a] border border-[#2a2a2a]'}`}>
           <span className="text-lg">{gps ? '📍' : '⏳'}</span>
           <div>
             <p className={`text-sm font-medium ${gps ? 'text-green-400' : 'text-gray-400'}`}>
@@ -240,7 +240,7 @@ export default function Ponto() {
         )}
 
         {/* Obras */}
-        <div className="mb-8">
+        <div className="mb-0">
           <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-3">As tuas obras</p>
 
           {obras.length === 0 ? (

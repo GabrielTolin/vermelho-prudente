@@ -72,7 +72,7 @@ export default function ListaFuncionarios({ funcionarios, onAtualizar }) {
 
   return (
     <>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
         {funcionarios.map(func => {
           const r = resumos[func.id] || { horas: '0.0', dias: 0, custo: '0.00' }
           return (
