@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../context/AuthContext'
 import { distanciaMetros } from '../../utils/gps'
-import { formatarHora, formatarData } from '../../utils/horas'
+import { formatarHora, formatarData, arredondar15min, timezoneLocal } from '../../utils/horas'
 
 export default function Ponto() {
   const { perfil, utilizador, logout } = useAuth()
@@ -46,13 +46,16 @@ export default function Ponto() {
     const obrasList = (obrasAssoc || []).map(o => o.vp_obras).filter(Boolean).filter(o => o.ativa)
     setObras(obrasList)
 
-    // Registos de hoje
-    const diaHoje = new Date().toISOString().split('T')[0]
+    // Registos de hoje — meia-noite em Lisboa (UTC-1 no inverno, UTC no verão)
+    const agora = new Date()
+    const inicioDia = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 0, 0, 0)
+    const fimDia = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 23, 59, 59)
     const { data: registos } = await supabase
       .from('vp_registos_ponto')
       .select('*')
       .eq('funcionario_id', func.id)
-      .gte('hora', `${diaHoje}T00:00:00Z`)
+      .gte('hora', inicioDia.toISOString())
+      .lte('hora', fimDia.toISOString())
       .order('hora')
 
     setRegistosHoje(registos || [])
@@ -109,13 +112,15 @@ export default function Ponto() {
 
     const tipo = estaEmObra && obraAtiva?.id === obra.id ? 'saida' : 'entrada'
 
+    const horaArredondada = arredondar15min(new Date())
+
     const { error } = await supabase.from('vp_registos_ponto').insert({
       funcionario_id: funcionario.id,
       obra_id: obra.id,
       tipo,
       latitude: gps.lat,
       longitude: gps.lng,
-      hora: new Date().toISOString(),
+      hora: horaArredondada.toISOString(),
     })
 
     setMarcando(false)

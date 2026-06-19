@@ -39,11 +39,12 @@ export default function Dashboard() {
     setFuncionarios(funcList)
 
     // Contar presentes hoje
-    const diaHoje = new Date().toISOString().split('T')[0]
+    const agora = new Date()
+    const inicioDia = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 0, 0, 0)
     const { data: pontosHoje } = await supabase
       .from('vp_registos_ponto')
       .select('funcionario_id, tipo, hora')
-      .gte('hora', `${diaHoje}T00:00:00Z`)
+      .gte('hora', inicioDia.toISOString())
       .order('hora', { ascending: false })
 
     const ultimoRegisto = {}
