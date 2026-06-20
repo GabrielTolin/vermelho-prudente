@@ -6,6 +6,7 @@ export default function CriarFuncionarioModal({ onFechar, onCriado }) {
     email: '',
     telefone: '',
     valor_hora: '',
+    tipo_periodo: 'mensal_25',
   })
   const [loading, setLoading] = useState(false)
   const [erro, setErro] = useState('')
@@ -94,6 +95,19 @@ export default function CriarFuncionarioModal({ onFechar, onCriado }) {
               placeholder="0.00"
               className="w-full bg-[#0a0a0a] border border-[#333] text-white rounded-xl px-4 py-3 outline-none focus:border-[#cc0000] transition"
             />
+          </div>
+
+          <div>
+            <label className="text-gray-400 text-sm mb-1 block">Período de fecho</label>
+            <select
+              name="tipo_periodo"
+              value={form.tipo_periodo}
+              onChange={handleChange}
+              className="w-full bg-[#0a0a0a] border border-[#333] text-white rounded-xl px-4 py-3 outline-none focus:border-[#cc0000] transition"
+            >
+              <option value="mensal_25">Dia 26 ao dia 25 (Portugal)</option>
+              <option value="mensal_fim">Dia 1 ao último dia do mês (Espanha)</option>
+            </select>
           </div>
 
           <div className="bg-[#0a0a0a] border border-[#222] rounded-xl px-4 py-3">

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../context/AuthContext'
 import { distanciaMetros } from '../../utils/gps'
-import { formatarHora, formatarData, arredondar15min, timezoneLocal } from '../../utils/horas'
+import AlterarPasswordModal from '../../components/funcionario/AlterarPasswordModal'
+import { formatarHora, formatarData, arredondar15min, timezoneLocal, calcularPeriodo } from '../../utils/horas'
 
 export default function Ponto() {
   const { perfil, utilizador, logout } = useAuth()
@@ -15,7 +16,9 @@ export default function Ponto() {
   const [marcando, setMarcando] = useState(false)
   const [mensagem, setMensagem] = useState('')
   const [recibos, setRecibos] = useState([])
-  const [tab, setTab] = useState('ponto') // 'ponto' | 'recibos'
+  const [resumoMes, setResumoMes] = useState({ horas: '0.0', dias: 0, custo: '0.00' })
+  const [tab, setTab] = useState('ponto')
+  const [modalPassword, setModalPassword] = useState(false) // 'ponto' | 'recibos'
 
   const hoje = new Date().toLocaleDateString('pt-PT', {
     weekday: 'long', day: '2-digit', month: 'long'
@@ -68,6 +71,34 @@ export default function Ponto() {
       .order('criado_em', { ascending: false })
     setRecibos(recibosData || [])
 
+    // Resumo do mês
+    const { inicio, fim } = calcularPeriodo(func.tipo_periodo || 'mensal_25')
+    const { data: registosMes } = await supabase
+      .from('vp_registos_ponto')
+      .select('tipo, hora')
+      .eq('funcionario_id', func.id)
+      .gte('hora', inicio.toISOString())
+      .lte('hora', fim.toISOString())
+      .order('hora')
+
+    let totalMs = 0
+    const dias = new Set()
+    const regs = registosMes || []
+    for (let i = 0; i < regs.length - 1; i++) {
+      if (regs[i].tipo === 'entrada' && regs[i + 1].tipo === 'saida') {
+        const entrada = new Date(regs[i].hora)
+        const saida = new Date(regs[i + 1].hora)
+        totalMs += saida - entrada
+        dias.add(entrada.toISOString().split('T')[0])
+      }
+    }
+    const horas = totalMs / 3600000
+    setResumoMes({
+      horas: horas.toFixed(1),
+      dias: dias.size,
+      custo: (horas * (func.valor_hora || 0)).toFixed(2),
+    })
+
     setLoading(false)
   }
 
@@ -98,13 +129,17 @@ export default function Ponto() {
   async function marcarPonto(obra) {
     if (!gps) { setErroGps('Aguarda o GPS...'); return }
 
+    // Bloquear se obra não tiver GPS definido
+    if (!obra.latitude || !obra.longitude) {
+      setMensagem('Esta obra não tem localização GPS definida. Contacta o administrador.')
+      return
+    }
+
     // Validar raio
-    if (obra.latitude && obra.longitude) {
-      const dist = distanciaMetros(gps.lat, gps.lng, obra.latitude, obra.longitude)
-      if (dist > obra.raio_metros) {
-        setMensagem(`Estás a ${Math.round(dist)}m da obra. Raio permitido: ${obra.raio_metros}m.`)
-        return
-      }
+    const dist = distanciaMetros(gps.lat, gps.lng, obra.latitude, obra.longitude)
+    if (dist > obra.raio_metros) {
+      setMensagem(`Estás a ${Math.round(dist)}m da obra. Tens de estar a menos de ${obra.raio_metros}m para marcar ponto.`)
+      return
     }
 
     setMarcando(true)
@@ -163,7 +198,29 @@ export default function Ponto() {
             <h1 className="text-white font-bold text-lg">Olá, {funcionario?.nome?.split(' ')[0] || 'Funcionário'} 👋</h1>
             <p className="text-gray-500 text-sm mt-0.5 capitalize">{hoje}</p>
           </div>
-          <button onClick={logout} className="text-gray-500 hover:text-white text-sm transition">Sair</button>
+          <div className="flex items-center gap-3">
+            <button onClick={() => setModalPassword(true)} className="text-gray-500 hover:text-white text-sm transition">🔑</button>
+            <button onClick={logout} className="text-gray-500 hover:text-white text-sm transition">Sair</button>
+          </div>
+        </div>
+
+        {/* Resumo do mês */}
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl px-5 py-4">
+          <p className="text-gray-500 text-xs mb-3 uppercase tracking-wider font-semibold">Este mês</p>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="text-center">
+              <p className="text-white font-bold text-xl">{resumoMes.horas}h</p>
+              <p className="text-gray-500 text-xs mt-0.5">Horas</p>
+            </div>
+            <div className="text-center border-x border-[#222]">
+              <p className="text-white font-bold text-xl">{resumoMes.dias}</p>
+              <p className="text-gray-500 text-xs mt-0.5">Dias</p>
+            </div>
+            <div className="text-center">
+              <p className="text-[#cc0000] font-bold text-xl">{resumoMes.custo}€</p>
+              <p className="text-gray-500 text-xs mt-0.5">A receber</p>
+            </div>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -264,17 +321,23 @@ export default function Ponto() {
                       )}
                     </div>
 
-                    <button
-                      onClick={() => marcarPonto(obra)}
-                      disabled={marcando || !gps || (estaEmObra && !estaNestaObra)}
-                      className={`w-full font-semibold rounded-xl py-3.5 transition disabled:opacity-40 text-sm ${
-                        estaNestaObra
-                          ? 'bg-red-700 hover:bg-red-800 text-white'
-                          : 'bg-[#cc0000] hover:bg-[#aa0000] text-white'
-                      }`}
-                    >
-                      {marcando ? 'A registar...' : estaNestaObra ? 'Marcar Saída' : 'Marcar Entrada'}
-                    </button>
+                    {!obra.latitude || !obra.longitude ? (
+                      <div className="w-full text-center py-3 text-yellow-500 text-xs border border-yellow-800/40 rounded-xl bg-yellow-900/10">
+                        ⚠️ Sem GPS definido — contacta o administrador
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => marcarPonto(obra)}
+                        disabled={marcando || !gps || (estaEmObra && !estaNestaObra)}
+                        className={`w-full font-semibold rounded-xl py-3.5 transition disabled:opacity-40 text-sm ${
+                          estaNestaObra
+                            ? 'bg-red-700 hover:bg-red-800 text-white'
+                            : 'bg-[#cc0000] hover:bg-[#aa0000] text-white'
+                        }`}
+                      >
+                        {marcando ? 'A registar...' : estaNestaObra ? 'Marcar Saída' : 'Marcar Entrada'}
+                      </button>
+                    )}
                   </div>
                 )
               })}
@@ -300,6 +363,10 @@ export default function Ponto() {
 
         </>}
       </div>
+
+      {modalPassword && (
+        <AlterarPasswordModal onFechar={() => setModalPassword(false)} />
+      )}
     </div>
   )
 }

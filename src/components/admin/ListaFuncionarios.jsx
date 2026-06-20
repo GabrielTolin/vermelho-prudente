@@ -1,18 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../context/AuthContext'
 import FuncionarioModal from './FuncionarioModal'
-
-function periodoAtual() {
-  const agora = new Date()
-  const dia = agora.getDate()
-  const mes = agora.getMonth()
-  const ano = agora.getFullYear()
-  if (dia <= 25) {
-    return { inicio: new Date(ano, mes - 1, 26), fim: new Date(ano, mes, 25, 23, 59, 59) }
-  } else {
-    return { inicio: new Date(ano, mes, 26), fim: new Date(ano, mes + 1, 25, 23, 59, 59) }
-  }
-}
+import { calcularPeriodo } from '../../utils/horas'
 
 export default function ListaFuncionarios({ funcionarios, onAtualizar }) {
   const [resumos, setResumos] = useState({})
@@ -23,22 +12,21 @@ export default function ListaFuncionarios({ funcionarios, onAtualizar }) {
   }, [funcionarios])
 
   async function carregarResumos() {
-    const { inicio, fim } = periodoAtual()
-    const { data } = await supabase
+    // Buscar todos os registos de todos os funcionários de uma vez
+    const { data: todosRegistos } = await supabase
       .from('vp_registos_ponto')
       .select('funcionario_id, tipo, hora')
-      .gte('hora', inicio.toISOString())
-      .lte('hora', fim.toISOString())
       .order('hora')
 
-    const porFunc = {}
-    for (const r of (data || [])) {
-      if (!porFunc[r.funcionario_id]) porFunc[r.funcionario_id] = []
-      porFunc[r.funcionario_id].push(r)
-    }
-
     const resumosCalc = {}
-    for (const [funcId, registos] of Object.entries(porFunc)) {
+    for (const func of funcionarios) {
+      const { inicio, fim } = calcularPeriodo(func.tipo_periodo || 'mensal_25')
+      const registos = (todosRegistos || []).filter(r =>
+        r.funcionario_id === func.id &&
+        new Date(r.hora) >= inicio &&
+        new Date(r.hora) <= fim
+      )
+
       let totalMs = 0
       const dias = new Set()
       for (let i = 0; i < registos.length - 1; i++) {
@@ -49,12 +37,11 @@ export default function ListaFuncionarios({ funcionarios, onAtualizar }) {
           dias.add(entrada.toISOString().split('T')[0])
         }
       }
-      const func = funcionarios.find(f => f.id === funcId)
       const horas = totalMs / 3600000
-      resumosCalc[funcId] = {
+      resumosCalc[func.id] = {
         horas: horas.toFixed(1),
         dias: dias.size,
-        custo: (horas * (func?.valor_hora || 0)).toFixed(2),
+        custo: (horas * (func.valor_hora || 0)).toFixed(2),
       }
     }
     setResumos(resumosCalc)

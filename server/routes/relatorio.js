@@ -5,14 +5,23 @@ import { supabase } from '../supabase.js'
 const router = Router()
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-function periodoFecho() {
+function periodoFecho(tipo = 'mensal_25') {
   const agora = new Date()
+  const dia = agora.getDate()
   const mes = agora.getMonth()
   const ano = agora.getFullYear()
-  // Período: dia 26 do mês anterior até dia 25 do mês atual
-  const inicio = new Date(ano, mes - 1, 26, 0, 0, 0)
-  const fim = new Date(ano, mes, 25, 23, 59, 59)
-  return { inicio, fim }
+
+  if (tipo === 'mensal_25') {
+    if (dia <= 25) {
+      return { inicio: new Date(ano, mes - 1, 26, 0, 0, 0), fim: new Date(ano, mes, 25, 23, 59, 59) }
+    } else {
+      return { inicio: new Date(ano, mes, 26, 0, 0, 0), fim: new Date(ano, mes + 1, 25, 23, 59, 59) }
+    }
+  }
+
+  // mensal_fim
+  const ultimoDia = new Date(ano, mes + 1, 0).getDate()
+  return { inicio: new Date(ano, mes, 1, 0, 0, 0), fim: new Date(ano, mes, ultimoDia, 23, 59, 59) }
 }
 
 function calcularResumo(registos, valorHora) {
@@ -43,8 +52,6 @@ function formatarPeriodo(inicio, fim) {
 }
 
 router.post('/enviar', async (req, res) => {
-  const { inicio, fim } = periodoFecho()
-
   // Buscar funcionários ativos
   const { data: funcionarios, error: funcError } = await supabase
     .from('vp_funcionarios')
@@ -54,22 +61,24 @@ router.post('/enviar', async (req, res) => {
 
   if (funcError) return res.status(500).json({ error: funcError.message })
 
-  // Buscar registos do período
+  // Buscar todos os registos (filtro por período é feito por funcionário)
   const { data: registos } = await supabase
     .from('vp_registos_ponto')
     .select('funcionario_id, tipo, hora')
-    .gte('hora', inicio.toISOString())
-    .lte('hora', fim.toISOString())
 
-  // Calcular resumo por funcionário
+  // Calcular resumo por funcionário usando o período correto de cada um
   const resumos = funcionarios.map(func => {
-    const registosFunc = (registos || []).filter(r => r.funcionario_id === func.id)
+    const { inicio, fim } = periodoFecho(func.tipo_periodo || 'mensal_25')
+    const registosFunc = (registos || []).filter(r =>
+      r.funcionario_id === func.id &&
+      new Date(r.hora) >= inicio &&
+      new Date(r.hora) <= fim
+    )
     const resumo = calcularResumo(registosFunc, func.valor_hora || 0)
-    return { ...func, ...resumo }
+    return { ...func, ...resumo, periodo: formatarPeriodo(inicio, fim) }
   })
 
   const totalCusto = resumos.reduce((acc, r) => acc + parseFloat(r.custo), 0).toFixed(2)
-  const periodo = formatarPeriodo(inicio, fim)
 
   // Gerar HTML do email
   const linhasFuncionarios = resumos.map(r => `
@@ -97,7 +106,7 @@ router.post('/enviar', async (req, res) => {
         <!-- Título -->
         <div style="background:#111;border:1px solid #222;border-radius:12px;padding:24px;margin-bottom:24px;">
           <h2 style="color:#fff;font-size:18px;margin:0 0 4px;">Relatório Mensal</h2>
-          <p style="color:#666;font-size:13px;margin:0;">${periodo}</p>
+          <p style="color:#666;font-size:13px;margin:0;">Gerado em ${new Date().toLocaleDateString('pt-PT')}</p>
         </div>
 
         <!-- Tabela -->

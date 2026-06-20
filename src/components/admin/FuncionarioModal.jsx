@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../context/AuthContext'
-import { formatarHora, formatarData } from '../../utils/horas'
+import { formatarHora, formatarData, calcularPeriodo } from '../../utils/horas'
 import RecibosTab from './RecibosTab'
 
 function periodoAtual() {
@@ -23,6 +23,7 @@ export default function FuncionarioModal({ funcionario, onFechar, onAtualizar })
     email: funcionario.email,
     telefone: funcionario.telefone || '',
     valor_hora: funcionario.valor_hora || 0,
+    tipo_periodo: funcionario.tipo_periodo || 'mensal_25',
   })
   const [registos, setRegistos] = useState([])
   const [loading, setLoading] = useState(false)
@@ -35,7 +36,7 @@ export default function FuncionarioModal({ funcionario, onFechar, onAtualizar })
 
   async function carregarRegistos() {
     setLoading(true)
-    const { inicio, fim } = periodoAtual()
+    const { inicio, fim } = calcularPeriodo(funcionario.tipo_periodo || 'mensal_25')
     const { data } = await supabase
       .from('vp_registos_ponto')
       .select('*, vp_obras(nome)')
@@ -56,6 +57,7 @@ export default function FuncionarioModal({ funcionario, onFechar, onAtualizar })
         nome: form.nome,
         telefone: form.telefone,
         valor_hora: Number(form.valor_hora),
+        tipo_periodo: form.tipo_periodo,
       })
       .eq('id', funcionario.id)
     setSalvando(false)
@@ -167,6 +169,21 @@ export default function FuncionarioModal({ funcionario, onFechar, onAtualizar })
                     }`}
                   />
                 </div>
+                <div>
+                  <label className="text-gray-400 text-xs mb-1 block">Período de fecho</label>
+                  <select
+                    value={form.tipo_periodo}
+                    onChange={e => setForm(f => ({ ...f, tipo_periodo: e.target.value }))}
+                    disabled={!editando}
+                    className={`w-full bg-[#0a0a0a] border rounded-xl px-4 py-3 text-white outline-none transition text-sm ${
+                      editando ? 'border-[#cc0000]' : 'border-[#222] text-gray-300'
+                    }`}
+                  >
+                    <option value="mensal_25">Dia 26 ao dia 25 (Portugal)</option>
+                    <option value="mensal_fim">Dia 1 ao último dia do mês (Espanha)</option>
+                  </select>
+                </div>
+
                 <div>
                   <label className="text-gray-400 text-xs mb-1 block">Valor por hora (€)</label>
                   <input
