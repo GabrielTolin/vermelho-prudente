@@ -81,8 +81,8 @@ export default function ObraModal({ obra, onFechar, onAtualizar }) {
 
   async function encerrarObra() {
     if (!confirm(`Encerrar a obra "${obra.nome}"?`)) return
-    await supabase.from('vp_obras').update({ ativa: false }).eq('id', obra.id)
-    onFechar()
+    const { error } = await supabase.from('vp_obras').update({ ativa: false }).eq('id', obra.id)
+    if (error) { setMensagem('Erro ao encerrar obra.'); return }
     onAtualizar()
   }
 

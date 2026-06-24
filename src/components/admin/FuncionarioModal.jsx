@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../context/AuthContext'
 import { formatarHora, formatarData, calcularPeriodo } from '../../utils/horas'
 import RecibosTab from './RecibosTab'
+import RegistoManualModal from './RegistoManualModal'
 
 function periodoAtual() {
   const agora = new Date()
@@ -29,6 +30,7 @@ export default function FuncionarioModal({ funcionario, onFechar, onAtualizar })
   const [loading, setLoading] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState('')
+  const [modalManual, setModalManual] = useState(false)
 
   useEffect(() => {
     if (tab === 'ponto') carregarRegistos()
@@ -235,6 +237,13 @@ export default function FuncionarioModal({ funcionario, onFechar, onAtualizar })
 
           {tab === 'ponto' && (
             <div>
+              <button
+                onClick={() => setModalManual(true)}
+                className="w-full mb-4 border border-[#333] hover:border-[#cc0000] text-gray-300 hover:text-white rounded-xl py-3 text-sm transition"
+              >
+                + Adicionar registo manual
+              </button>
+
               {loading ? (
                 <div className="flex justify-center mt-10">
                   <div className="w-7 h-7 border-4 border-[#cc0000] border-t-transparent rounded-full animate-spin" />
@@ -271,6 +280,14 @@ export default function FuncionarioModal({ funcionario, onFechar, onAtualizar })
           )}
         </div>
       </div>
+
+      {modalManual && (
+        <RegistoManualModal
+          funcionario={funcionario}
+          onFechar={() => setModalManual(false)}
+          onGuardado={() => { setModalManual(false); carregarRegistos() }}
+        />
+      )}
     </div>
   )
 }
