@@ -59,4 +59,20 @@ router.put('/:id', async (req, res) => {
   res.json(data)
 })
 
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params
+
+  // Apagar da tabela vp_funcionarios
+  const { error: funcError } = await supabase.from('vp_funcionarios').delete().eq('id', id)
+  if (funcError) return res.status(400).json({ error: funcError.message })
+
+  // Apagar perfil
+  await supabase.from('perfis').delete().eq('id', id)
+
+  // Apagar do Auth
+  await supabase.auth.admin.deleteUser(id)
+
+  res.json({ ok: true })
+})
+
 export default router

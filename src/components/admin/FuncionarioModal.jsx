@@ -31,6 +31,7 @@ export default function FuncionarioModal({ funcionario, onFechar, onAtualizar })
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState('')
   const [modalManual, setModalManual] = useState(false)
+  const [deletando, setDeletando] = useState(false)
 
   useEffect(() => {
     if (tab === 'ponto') carregarRegistos()
@@ -48,6 +49,17 @@ export default function FuncionarioModal({ funcionario, onFechar, onAtualizar })
       .order('hora', { ascending: false })
     setRegistos(data || [])
     setLoading(false)
+  }
+
+  async function deletarFuncionario() {
+    if (!confirm(`Eliminar permanentemente "${funcionario.nome}"? Esta ação não pode ser revertida.`)) return
+    setDeletando(true)
+    const BASE_URL = import.meta.env.DEV ? 'http://localhost:3001/api' : 'https://vermelho-prudente.onrender.com/api'
+    const res = await fetch(`${BASE_URL}/funcionarios/${funcionario.id}`, { method: 'DELETE' })
+    setDeletando(false)
+    if (!res.ok) { setErro('Erro ao eliminar funcionário.'); return }
+    onAtualizar()
+    onFechar()
   }
 
   async function salvar() {
@@ -228,6 +240,14 @@ export default function FuncionarioModal({ funcionario, onFechar, onAtualizar })
                   Editar informações
                 </button>
               )}
+
+              <button
+                onClick={deletarFuncionario}
+                disabled={deletando}
+                className="w-full border border-red-900/50 text-red-500 hover:bg-red-900/20 rounded-xl py-3 text-sm transition disabled:opacity-50"
+              >
+                {deletando ? 'A eliminar...' : 'Eliminar funcionário'}
+              </button>
             </div>
           )}
 
