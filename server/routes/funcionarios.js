@@ -10,7 +10,7 @@ router.get('/', async (_req, res) => {
 })
 
 router.post('/', async (req, res) => {
-  const { nome, email, telefone, valor_hora } = req.body
+  const { nome, email, telefone, valor_hora, tipo_periodo } = req.body
 
   // 1. Criar utilizador no Supabase Auth
   const { data: authData, error: authError } = await supabase.auth.admin.createUser({
@@ -29,6 +29,7 @@ router.post('/', async (req, res) => {
     email,
     telefone: telefone || null,
     valor_hora: Number(valor_hora) || 0,
+    tipo_periodo: tipo_periodo || 'mensal_25',
     ativo: true,
   }).select().single()
 
