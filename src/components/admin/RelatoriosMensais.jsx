@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { jsPDF } from 'jspdf'
 import { supabase } from '../../context/AuthContext'
-import { calcularPeriodo } from '../../utils/horas'
 
 function formatarDataPT(date) {
   return date.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -22,11 +21,47 @@ function calcularResumoFuncionario(registos) {
   return { horas: (totalMs / 3600000).toFixed(1), dias: dias.size }
 }
 
+// Calcula período para um mês específico (offset: 0 = atual, -1 = anterior, etc.)
+function calcularPeriodoOffset(tipoPeriodo, offset) {
+  const agora = new Date()
+  const mes = agora.getMonth() + offset
+  const ano = agora.getFullYear()
+  const dataRef = new Date(ano, mes, 1)
+
+  if (tipoPeriodo === 'mensal_25') {
+    const inicio = new Date(dataRef.getFullYear(), dataRef.getMonth() - 1, 26, 0, 0, 0)
+    const fim = new Date(dataRef.getFullYear(), dataRef.getMonth(), 25, 23, 59, 59)
+    return { inicio, fim }
+  }
+
+  // mensal_fim
+  const ultimoDia = new Date(dataRef.getFullYear(), dataRef.getMonth() + 1, 0).getDate()
+  return {
+    inicio: new Date(dataRef.getFullYear(), dataRef.getMonth(), 1, 0, 0, 0),
+    fim: new Date(dataRef.getFullYear(), dataRef.getMonth(), ultimoDia, 23, 59, 59),
+  }
+}
+
+// Gera lista de opções dos últimos 12 meses
+function gerarOpcoesMeses(tipoPeriodo) {
+  const opcoes = []
+  for (let i = 0; i >= -11; i--) {
+    const { inicio, fim } = calcularPeriodoOffset(tipoPeriodo, i)
+    const label = i === 0 ? `Mês atual (${formatarDataPT(inicio)} — ${formatarDataPT(fim)})`
+                : i === -1 ? `Mês anterior (${formatarDataPT(inicio)} — ${formatarDataPT(fim)})`
+                : `${formatarDataPT(inicio)} — ${formatarDataPT(fim)}`
+    opcoes.push({ value: i, label, inicio, fim })
+  }
+  return opcoes
+}
+
 export default function RelatoriosMensais({ funcionarios }) {
   const [gerandoPT, setGerandoPT] = useState(false)
   const [gerandoES, setGerandoES] = useState(false)
+  const [offsetPT, setOffsetPT] = useState(-1) // default: mês anterior
+  const [offsetES, setOffsetES] = useState(-1)
 
-  async function gerarRelatorio(tipoPeriodo) {
+  async function gerarRelatorio(tipoPeriodo, offset) {
     const setter = tipoPeriodo === 'mensal_25' ? setGerandoPT : setGerandoES
     setter(true)
 
@@ -38,9 +73,8 @@ export default function RelatoriosMensais({ funcionarios }) {
       return
     }
 
-    // Buscar obras associadas e registos de cada funcionário
     const ids = funcsFiltrados.map(f => f.id)
-    const { inicio, fim } = calcularPeriodo(tipoPeriodo)
+    const { inicio, fim } = calcularPeriodoOffset(tipoPeriodo, offset)
 
     const [{ data: registos }, { data: obraAssoc }] = await Promise.all([
       supabase
@@ -178,6 +212,9 @@ export default function RelatoriosMensais({ funcionarios }) {
     setter(false)
   }
 
+  const opcoesPT = gerarOpcoesMeses('mensal_25')
+  const opcoesES = gerarOpcoesMeses('mensal_fim')
+
   return (
     <div className="flex flex-col gap-6">
 
@@ -187,14 +224,23 @@ export default function RelatoriosMensais({ funcionarios }) {
           <span className="text-2xl">🇵🇹</span>
           <div>
             <p className="text-white font-semibold">Portugal</p>
-            <p className="text-gray-500 text-xs mt-0.5">Período: dia 26 ao dia 25</p>
+            <p className="text-gray-500 text-xs mt-0.5">Período: dia 26 ao dia 25 · {funcionarios.filter(f => (f.tipo_periodo || 'mensal_25') === 'mensal_25').length} funcionários</p>
           </div>
         </div>
-        <p className="text-gray-600 text-xs mb-4">
-          {funcionarios.filter(f => (f.tipo_periodo || 'mensal_25') === 'mensal_25').length} funcionários
-        </p>
+        <div className="mb-3">
+          <label className="text-gray-400 text-xs mb-1 block">Selecionar período</label>
+          <select
+            value={offsetPT}
+            onChange={e => setOffsetPT(Number(e.target.value))}
+            className="w-full bg-[#0a0a0a] border border-[#333] text-white rounded-xl px-4 py-3 text-sm outline-none focus:border-[#cc0000] transition"
+          >
+            {opcoesPT.map(op => (
+              <option key={op.value} value={op.value}>{op.label}</option>
+            ))}
+          </select>
+        </div>
         <button
-          onClick={() => gerarRelatorio('mensal_25')}
+          onClick={() => gerarRelatorio('mensal_25', offsetPT)}
           disabled={gerandoPT}
           className="w-full bg-[#cc0000] hover:bg-[#aa0000] text-white font-semibold rounded-xl py-3.5 text-sm transition disabled:opacity-50"
         >
@@ -208,14 +254,23 @@ export default function RelatoriosMensais({ funcionarios }) {
           <span className="text-2xl">🇪🇸</span>
           <div>
             <p className="text-white font-semibold">Espanha</p>
-            <p className="text-gray-500 text-xs mt-0.5">Período: dia 1 ao último dia do mês</p>
+            <p className="text-gray-500 text-xs mt-0.5">Período: dia 1 ao último dia do mês · {funcionarios.filter(f => f.tipo_periodo === 'mensal_fim').length} funcionários</p>
           </div>
         </div>
-        <p className="text-gray-600 text-xs mb-4">
-          {funcionarios.filter(f => f.tipo_periodo === 'mensal_fim').length} funcionários
-        </p>
+        <div className="mb-3">
+          <label className="text-gray-400 text-xs mb-1 block">Selecionar período</label>
+          <select
+            value={offsetES}
+            onChange={e => setOffsetES(Number(e.target.value))}
+            className="w-full bg-[#0a0a0a] border border-[#333] text-white rounded-xl px-4 py-3 text-sm outline-none focus:border-[#cc0000] transition"
+          >
+            {opcoesES.map(op => (
+              <option key={op.value} value={op.value}>{op.label}</option>
+            ))}
+          </select>
+        </div>
         <button
-          onClick={() => gerarRelatorio('mensal_fim')}
+          onClick={() => gerarRelatorio('mensal_fim', offsetES)}
           disabled={gerandoES}
           className="w-full bg-[#cc0000] hover:bg-[#aa0000] text-white font-semibold rounded-xl py-3.5 text-sm transition disabled:opacity-50"
         >
