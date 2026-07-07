@@ -6,6 +6,8 @@ import AlterarPasswordModal from '../../components/funcionario/AlterarPasswordMo
 import { formatarHora, formatarData, arredondar15min, timezoneLocal, calcularPeriodo } from '../../utils/horas'
 
 export default function Ponto() {
+
+  
   const { perfil, utilizador, logout } = useAuth()
   const [funcionario, setFuncionario] = useState(null)
   const [obras, setObras] = useState([])

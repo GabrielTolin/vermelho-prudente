@@ -3,6 +3,7 @@ import { supabase } from '../../context/AuthContext'
 import { formatarHora, formatarData, calcularPeriodo } from '../../utils/horas'
 import RecibosTab from './RecibosTab'
 import RegistoManualModal from './RegistoManualModal'
+import EditarRegistoModal from './EditarRegistoModal'
 
 function periodoAtual() {
   const agora = new Date()
@@ -32,6 +33,7 @@ export default function FuncionarioModal({ funcionario, onFechar, onAtualizar })
   const [erro, setErro] = useState('')
   const [modalManual, setModalManual] = useState(false)
   const [deletando, setDeletando] = useState(false)
+  const [registoEditar, setRegistoEditar] = useState(null)
 
   useEffect(() => {
     if (tab === 'ponto') carregarRegistos()
@@ -49,6 +51,12 @@ export default function FuncionarioModal({ funcionario, onFechar, onAtualizar })
       .order('hora', { ascending: false })
     setRegistos(data || [])
     setLoading(false)
+  }
+
+  async function apagarRegisto(id) {
+    if (!confirm('Apagar este registo de ponto?')) return
+    await supabase.from('vp_registos_ponto').delete().eq('id', id)
+    carregarRegistos()
   }
 
   async function deletarFuncionario() {
@@ -290,6 +298,18 @@ export default function FuncionarioModal({ funcionario, onFechar, onAtualizar })
                             )}
                           </div>
                           <p className="text-gray-300 text-sm font-mono">{formatarHora(r.hora)}</p>
+                          <button
+                            onClick={() => setRegistoEditar(r)}
+                            className="text-gray-500 hover:text-white text-xs px-2 py-1 border border-[#333] rounded-lg hover:border-[#cc0000] transition"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => apagarRegisto(r.id)}
+                            className="text-red-600 hover:text-red-400 text-xs px-2 py-1 border border-red-900/40 rounded-lg hover:border-red-500 transition"
+                          >
+                            🗑️
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -306,6 +326,14 @@ export default function FuncionarioModal({ funcionario, onFechar, onAtualizar })
           funcionario={funcionario}
           onFechar={() => setModalManual(false)}
           onGuardado={() => { setModalManual(false); carregarRegistos() }}
+        />
+      )}
+
+      {registoEditar && (
+        <EditarRegistoModal
+          registo={registoEditar}
+          onFechar={() => setRegistoEditar(null)}
+          onGuardado={() => { setRegistoEditar(null); carregarRegistos() }}
         />
       )}
     </div>

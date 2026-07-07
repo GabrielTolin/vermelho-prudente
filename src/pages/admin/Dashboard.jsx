@@ -6,6 +6,7 @@ import CriarObraModal from '../../components/admin/CriarObraModal'
 import CriarFuncionarioModal from '../../components/admin/CriarFuncionarioModal'
 import ListaObras from '../../components/admin/ListaObras'
 import ListaFuncionarios from '../../components/admin/ListaFuncionarios'
+import RelatoriosMensais from '../../components/admin/RelatoriosMensais'
 
 export default function Dashboard() {
   const { logout } = useAuth()
@@ -143,6 +144,14 @@ export default function Dashboard() {
           >
             Funcionários
           </button>
+          <button
+            onClick={() => setTab('relatorios')}
+            className={`pb-3 text-sm font-semibold transition border-b-2 -mb-px ${
+              tab === 'relatorios' ? 'text-white border-[#cc0000]' : 'text-gray-500 border-transparent'
+            }`}
+          >
+            Relatórios
+          </button>
         </div>
 
         {/* Conteúdo */}
@@ -152,8 +161,10 @@ export default function Dashboard() {
           </div>
         ) : tab === 'obras' ? (
           <ListaObras obras={obras} onAtualizar={carregarDados} />
-        ) : (
+        ) : tab === 'funcionarios' ? (
           <ListaFuncionarios funcionarios={funcionarios} onAtualizar={carregarDados} />
+        ) : (
+          <RelatoriosMensais funcionarios={funcionarios} />
         )}
       </div>
 
