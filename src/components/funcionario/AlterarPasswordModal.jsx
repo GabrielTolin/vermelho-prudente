@@ -24,7 +24,7 @@ export default function AlterarPasswordModal({ onFechar }) {
     const { error } = await supabase.auth.updateUser({ password: form.nova })
     setLoading(false)
 
-    if (error) { setErro('Erro ao alterar password. Tenta novamente.'); return }
+    if (error) { console.error('updateUser error:', error); setErro(`Erro: ${error.message}`); return }
     setSucesso(true)
     setTimeout(onFechar, 2000)
   }
