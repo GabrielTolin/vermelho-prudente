@@ -1,9 +1,8 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
-// TODO: substituir pelos valores do novo projeto Supabase
-const SUPABASE_URL = 'https://wbzfvipcslqczxqivkjn.supabase.co'
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndiemZ2aXBjc2xxY3p4cWl2a2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODIzMzksImV4cCI6MjA5MzA1ODMzOX0.JEgLRZxr1GVlfa03bFf40o6bedfCe7q8AGE8njIanCk'
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 

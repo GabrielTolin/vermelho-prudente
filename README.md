@@ -1,65 +1,71 @@
 # Vermelho Prudente — Field Time Tracking
 
-App de gestão de ponto e obras para empresa de canalizações com equipas em Portugal e Espanha.
+GPS-based time tracking app for a plumbing company with crews operating across Portugal and Spain.
 
 **Live:** [vermelho-prudente.vercel.app](https://vermelho-prudente.vercel.app)
 
 **Stack:** React · Vite · Tailwind CSS · Node.js · Express · Supabase (PostgreSQL + Auth + Storage) · Vercel · Render
 
----
-
-## O que faz
-
-- Funcionários marcam entrada/saída via GPS — só funciona dentro de um raio configurável da obra (Haversine formula, default 200m)
-- Admin gere obras, funcionários, recibos e gera relatórios mensais em PDF
-- Dois ciclos de fecho: dia 26→25 (Portugal) e dia 1→último (Espanha), configurável por funcionário
-- PWA instalável no telemóvel — o público-alvo usa o Telemóvel em obra, sem laptop.
+<p align="center">
+  <img src="public/screenshot_login.png" width="280" alt="Login screen" />
+  &nbsp;&nbsp;
+  <img src="public/screenshot_dashboard.png" width="280" alt="Admin dashboard" />
+</p>
 
 ---
 
-## Decisões técnicas
+## What it does
 
-**PWA em vez de React Native**
-O cliente não tem budget para App Store. Uma PWA instalável no Android e no IPhone resolve o caso de uso (ícone no ecrã, funciona offline para ver dados em cache) sem fricção de distribuição.
-
-**Nominatim (OpenStreetMap) em vez de Google Maps**
-Geocoding de moradas para coordenadas GPS sem custo e sem cartão de crédito. Para o volume de requests deste projeto (admin cria obras pontualmente), o rate limit do Nominatim nunca é problema.
-
-**Frontend (Vercel) e backend (Render) separados**
-O Supabase anon key pode estar no frontend — é público por design. Mas `createUser` e `deleteUser` requerem a service role key, que nunca pode estar no cliente. O Express serve exclusivamente para operações admin que exigem a service key.
-
-**Supabase partilhado com prefixo `vp_`**
-Este projeto corre no mesmo Supabase de outro cliente. Em vez de criar um segundo projeto (e pagar), todas as tabelas têm prefixo `vp_` para isolamento lógico. Funciona porque RLS garante isolamento por utilizador autenticado, e mantem sem problemas por se tratarem de empresas de pequeno porte (10 - 30 funcionários).
-
-**jsPDF no browser para relatórios**
-O relatório mensal era enviado por email via Resend — falhou em produção por restrições do plano gratuito. Migrei para geração de PDF diretamente no browser: zero dependência de serviços externos, download imediato, histórico de 12 meses disponível.
+- Workers clock in/out via GPS — only works within a configurable radius of the job site (Haversine formula, default 200m)
+- Admin manages job sites, workers, pay slips and generates monthly PDF reports
+- Two billing cycles: 26th→25th (Portugal) and 1st→last day (Spain), configurable per worker
+- Installable PWA — the target audience uses Android on-site, not a laptop
 
 ---
 
-## Estrutura
+## Technical decisions
+
+**PWA instead of React Native**
+The client has no budget for App Store distribution. An installable PWA covers the real use case (home screen icon, cached data offline) with zero distribution friction on both Android and iPhone.
+
+**Nominatim (OpenStreetMap) instead of Google Maps**
+Address-to-coordinates geocoding at zero cost with no credit card required. For this project's request volume (admin creates job sites occasionally), Nominatim's rate limit is never a concern.
+
+**Separate frontend (Vercel) and backend (Render)**
+The Supabase anon key can live in the frontend — it's public by design. But `createUser` and `deleteUser` require the service role key, which must never reach the client. The Express server exists solely for admin operations that require elevated Supabase permissions.
+
+**Shared Supabase project with `vp_` prefix**
+This app runs on the same Supabase instance as another client project. Instead of provisioning a second project, all tables are prefixed `vp_` for logical isolation. RLS policies enforce row-level access per authenticated user.
+
+**jsPDF in-browser report generation**
+Monthly reports were originally sent by email via Resend — this failed in production due to free-tier restrictions. Moved to client-side PDF generation: no external service dependency, instant download, 12-month history always available.
+
+---
+
+## Project structure
 
 ```
 ├── src/
 │   ├── pages/
-│   │   ├── admin/Dashboard.jsx       # gestão de obras, funcionários, relatórios
-│   │   └── funcionario/Ponto.jsx     # clock-in/out com GPS
+│   │   ├── admin/Dashboard.jsx       # job site management, workers, reports
+│   │   └── funcionario/Ponto.jsx     # GPS clock-in/out
 │   ├── components/admin/
-│   │   ├── ObraModal.jsx             # presença em tempo real (polling 30s)
-│   │   ├── FuncionarioModal.jsx      # editar registos + upload recibos
-│   │   ├── RelatoriosMensais.jsx     # geração PDF com jsPDF
-│   │   └── RegistoManualModal.jsx    # correção de ponto pelo admin
+│   │   ├── ObraModal.jsx             # real-time presence (30s polling)
+│   │   ├── FuncionarioModal.jsx      # edit records + pay slip upload
+│   │   ├── RelatoriosMensais.jsx     # PDF generation with jsPDF
+│   │   └── RegistoManualModal.jsx    # admin override for missed clock-ins
 │   └── utils/
-│       ├── gps.js                    # Haversine
-│       └── horas.js                  # arredondamento 30min + cálculo de período
+│       ├── gps.js                    # Haversine distance calculation
+│       └── horas.js                  # 30-min rounding + billing period logic
 └── server/
     └── routes/
-        ├── funcionarios.js           # createUser / deleteUser com service key
-        └── relatorio.js              # endpoint legado (Resend)
+        ├── funcionarios.js           # createUser / deleteUser with service key
+        └── relatorio.js              # email endpoint (Resend)
 ```
 
 ---
 
-## Setup local
+## Local setup
 
 ```bash
 # Frontend
@@ -72,7 +78,13 @@ npm install
 node index.js
 ```
 
-Variáveis necessárias em `server/.env`:
+Frontend env vars (`.env.local`):
+```
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+```
+
+Backend env vars (`server/.env`):
 ```
 SUPABASE_URL=
 SUPABASE_SERVICE_KEY=
@@ -81,8 +93,6 @@ EMAIL_ADMIN=
 PORT=3001
 ```
 
-O frontend usa as credenciais Supabase hardcoded em `src/context/AuthContext.jsx` — workaround para limitação do Vercel com variáveis de ambiente em projetos sem `vite.config` configurado para isso.
-
 ---
 
-Desenvolvido por [Gabriel Tolin](https://github.com/GabrielTolin)
+Built by [Gabriel Tolin](https://github.com/GabrielTolin)
